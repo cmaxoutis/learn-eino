@@ -1,5 +1,6 @@
-// Command sub_agent shows how to run a sub-agent from a parent agent using the
-// AgentAsTool pattern: the sub-agent is wrapped as a tool the parent can call.
+// Command sub_agent shows how a parent agent delegates to specialist
+// sub-agents using the AgentAsTool pattern: each sub-agent is wrapped as a
+// tool the parent can call by name.
 package main
 
 import (
@@ -22,30 +23,44 @@ func main() {
 		log.Fatalf("newChatModel failed, err=%v", err)
 	}
 
-	// 1. Build the sub-agent. It is a normal ChatModelAgent with its own
-	// instruction and (optionally) its own tools.
-	subAgent, err := adk.NewChatModelAgent(ctx, &adk.ChatModelAgentConfig{
-		Name:        "math_expert",
-		Description: "Solves arithmetic problems step by step.",
-		Instruction: "You are a math expert. Solve the problem and return only the final answer.",
+	// 1. Build two specialist sub-agents. Each is a normal ChatModelAgent with
+	// its own name, description (used by the parent to decide whom to call) and
+	// instruction. The name and description are what make delegation work: the
+	// parent agent sees them as tool metadata.
+	chef, err := adk.NewChatModelAgent(ctx, &adk.ChatModelAgentConfig{
+		Name:        "chef",
+		Description: "Suggests recipes you can cook from a list of ingredients.",
+		Instruction: "You are a chef. Given available ingredients, suggest one simple dish and how to cook it in 3 short steps.",
 		Model:       chatModel,
 	})
 	if err != nil {
-		log.Fatalf("NewChatModelAgent(sub) failed, err=%v", err)
+		log.Fatalf("NewChatModelAgent(chef) failed, err=%v", err)
 	}
 
-	// 2. Wrap the sub-agent as a tool so the parent can call it.
-	subAgentTool := adk.NewAgentTool(ctx, subAgent)
+	guide, err := adk.NewChatModelAgent(ctx, &adk.ChatModelAgentConfig{
+		Name:        "local_guide",
+		Description: "Plans day trips and itineraries for visiting a city.",
+		Instruction: "You are a local tour guide. Plan a compact one-day itinerary with 3 highlights.",
+		Model:       chatModel,
+	})
+	if err != nil {
+		log.Fatalf("NewChatModelAgent(guide) failed, err=%v", err)
+	}
 
-	// 3. Build the parent agent that owns the sub-agent tool.
+	// 2. Wrap each sub-agent as a tool so the parent can call it.
+	// 3. Build the parent agent that owns the sub-agent tools. It decides which
+	// specialist to delegate to based on their name/description.
 	parentAgent, err := adk.NewChatModelAgent(ctx, &adk.ChatModelAgentConfig{
-		Name:        "coordinator",
-		Description: "Coordinates specialist sub-agents.",
-		Instruction: "You are a coordinator. Delegate math questions to the math_expert tool.",
+		Name:        "concierge",
+		Description: "Helps with travel and food questions by delegating to specialists.",
+		Instruction: "You are a hotel concierge. Delegate food questions to the chef tool and sightseeing questions to the local_guide tool. Summarize each specialist's answer in one line, prefixed with their name.",
 		Model:       chatModel,
 		ToolsConfig: adk.ToolsConfig{
 			ToolsNodeConfig: compose.ToolsNodeConfig{
-				Tools: []tool.BaseTool{subAgentTool},
+				Tools: []tool.BaseTool{
+					adk.NewAgentTool(ctx, chef),
+					adk.NewAgentTool(ctx, guide),
+				},
 			},
 		},
 	})
@@ -53,13 +68,15 @@ func main() {
 		log.Fatalf("NewChatModelAgent(parent) failed, err=%v", err)
 	}
 
-	// 4. Run the parent; it decides when to delegate to the sub-agent.
+	// 4. Run the parent; it decides when to delegate to each sub-agent.
 	runner := adk.NewRunner(ctx, adk.RunnerConfig{
 		Agent:           parentAgent,
 		EnableStreaming: true,
 	})
 
-	iter := runner.Query(ctx, "What is 17 * 23?")
+	// The question spans both specialties, so the parent should call both tools
+	// and merge their answers.
+	iter := runner.Query(ctx, "I'm visiting Lisbon for one day and I have eggs, potatoes and chorizo. What should I see, and what can I cook for dinner?")
 	for {
 		event, ok := iter.Next()
 		if !ok {
