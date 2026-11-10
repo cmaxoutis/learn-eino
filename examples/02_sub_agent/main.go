@@ -6,12 +6,11 @@ package main
 import (
 	"context"
 	"log"
-	"strings"
 
 	"github.com/cloudwego/eino/adk"
 	"github.com/cloudwego/eino/components/tool"
 	"github.com/cloudwego/eino/compose"
-	"github.com/cloudwego/eino/schema"
+	"github.com/cmaxoutis/learn-eino/examples/internal/agentutil"
 	"github.com/cmaxoutis/learn-eino/examples/internal/ollamahelper"
 )
 
@@ -86,28 +85,7 @@ func main() {
 			log.Fatalf("event error, err=%v", event.Err)
 		}
 		if event.Output != nil && event.Output.MessageOutput != nil {
-			printMessageOutput(event.AgentName, event.Output.MessageOutput)
+			agentutil.PrintMessageOutput(event.AgentName, event.Output.MessageOutput)
 		}
-	}
-}
-
-// printMessageOutput prints a message output, consuming the stream when the
-// runner is in streaming mode. The agent name and role make it clear which
-// agent produced the text and whether it is a model reply or a tool result.
-func printMessageOutput(agentName string, mv *adk.TypedMessageVariant[*schema.Message]) {
-	if !mv.IsStreaming {
-		log.Printf("[%s/%s] %s", agentName, mv.Role, mv.Message.Content)
-		return
-	}
-	var sb strings.Builder
-	for {
-		msg, recvErr := mv.MessageStream.Recv()
-		if recvErr != nil {
-			break // io.EOF means the stream finished.
-		}
-		sb.WriteString(msg.Content)
-	}
-	if sb.Len() > 0 {
-		log.Printf("[%s/%s] %s", agentName, mv.Role, sb.String())
 	}
 }
