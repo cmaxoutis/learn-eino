@@ -5,20 +5,19 @@ package main
 import (
 	"context"
 	"log"
-	"os"
 	"strings"
 
-	"github.com/cloudwego/eino-ext/components/model/ollama"
 	"github.com/cloudwego/eino/adk"
 	"github.com/cloudwego/eino/components/tool"
 	"github.com/cloudwego/eino/compose"
 	"github.com/cloudwego/eino/schema"
+	"github.com/cmaxoutis/learn-eino/examples/internal/ollamahelper"
 )
 
 func main() {
 	ctx := context.Background()
 
-	chatModel, err := newChatModel(ctx)
+	chatModel, err := ollamahelper.NewChatModel(ctx)
 	if err != nil {
 		log.Fatalf("newChatModel failed, err=%v", err)
 	}
@@ -94,21 +93,4 @@ func printMessageOutput(agentName string, mv *adk.TypedMessageVariant[*schema.Me
 	if sb.Len() > 0 {
 		log.Printf("[%s/%s] %s", agentName, mv.Role, sb.String())
 	}
-}
-
-// newChatModel builds an Ollama-backed chat model from environment defaults.
-func newChatModel(ctx context.Context) (*ollama.ChatModel, error) {
-	baseURL := os.Getenv("OLLAMA_BASE_URL")
-	if baseURL == "" {
-		baseURL = "http://localhost:11434"
-	}
-	modelName := os.Getenv("OLLAMA_MODEL")
-	if modelName == "" {
-		modelName = "llama3.1"
-	}
-
-	return ollama.NewChatModel(ctx, &ollama.ChatModelConfig{
-		BaseURL: baseURL,
-		Model:   modelName,
-	})
 }

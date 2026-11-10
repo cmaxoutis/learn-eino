@@ -5,31 +5,16 @@ package main
 import (
 	"context"
 	"log"
-	"os"
 	"strings"
 
-	"github.com/cloudwego/eino-ext/components/model/ollama"
 	"github.com/cloudwego/eino/schema"
+	"github.com/cmaxoutis/learn-eino/examples/internal/ollamahelper"
 )
 
 func main() {
 	ctx := context.Background()
 
-	// Point at your local Ollama server and pick the model you pulled, e.g.
-	// "llama3.1", "qwen2.5", "deepseek-r1:8b". Override via env if you like.
-	baseURL := os.Getenv("OLLAMA_BASE_URL")
-	if baseURL == "" {
-		baseURL = "http://localhost:11434"
-	}
-	modelName := os.Getenv("OLLAMA_MODEL")
-	if modelName == "" {
-		modelName = "llama3.2:3b-instruct-q6_K"
-	}
-
-	chatModel, err := ollama.NewChatModel(ctx, &ollama.ChatModelConfig{
-		BaseURL: baseURL,
-		Model:   modelName,
-	})
+	chatModel, err := ollamahelper.NewChatModel(ctx)
 	if err != nil {
 		log.Fatalf("NewChatModel failed, err=%v", err)
 	}

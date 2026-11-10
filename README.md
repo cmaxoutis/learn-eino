@@ -18,8 +18,8 @@ Learn [Eino](https://github.com/cloudwego/eino) by examples. Each example is a s
 
 ```bash
 # Optional configuration (defaults shown)
-export OLLAMA_BASE_URL=http://localhost:11434
-export OLLAMA_MODEL=llama3.1
+export OLLAMA_HOST=http://localhost:11434
+export OLLAMA_MODEL=llama3.2:3b
 
 go run examples/01_ollama_inference/main.go
 go run examples/02_sub_agent/main.go
